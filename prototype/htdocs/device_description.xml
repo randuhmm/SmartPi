@@ -1,0 +1,17 @@
+<?xml version='1.0'?>
+ <root xmlns="urn:schemas-upnp-org:device-1-0">
+  <device>
+   <deviceType>urn:schemas-microsoft-com:device:MediaCenterExtenderMFD:1</deviceType>
+   <friendlyName>Xbox 360 Media Center Extender</friendlyName>
+   <manufacturer>Microsoft Corporation</manufacturer>
+   <manufacturerURL>http://www.xbox.com/</manufacturerURL>
+   <modelDescription>Xbox 360 Media Center Extender</modelDescription>
+   <modelName>Xbox 360</modelName>
+   <roomName>My Room</roomName>
+   <modelNumber></modelNumber>
+   <modelURL>http://go.microsoft.com/fwlink/?LinkID=53081</modelURL>
+   <serialNumber></serialNumber>
+   <UDN>uuid:2fac1234-31f8-11b4-a222-08002b34c003</UDN>
+   <UPC></UPC>
+  </device>
+ </root>

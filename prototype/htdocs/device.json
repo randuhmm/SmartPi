@@ -1,0 +1,12 @@
+{
+  "device": {
+    "deviceName": "My Hub",
+    "deviceType": "urn:Randuhmm:device:hub:1",
+    "author": "Jonny Morrill",
+    "authorURL": "http://jonny.morrill.me/",
+    "modelDescription": "Randuhmm Hub IoT Device",
+    "modelName": "Randuhmm Hub",
+    "serialNum": "",
+    "UDN": "uuid:2fac1234-31f8-11b4-a222-08002b34c003"
+  }
+}
