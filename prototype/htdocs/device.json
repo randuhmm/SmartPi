@@ -1,12 +1,32 @@
 {
-  "device": {
-    "deviceName": "My Hub",
-    "deviceType": "urn:Randuhmm:device:hub:1",
-    "author": "Jonny Morrill",
-    "authorURL": "http://jonny.morrill.me/",
-    "modelDescription": "Randuhmm Hub IoT Device",
-    "modelName": "Randuhmm Hub",
-    "serialNum": "",
-    "UDN": "uuid:2fac1234-31f8-11b4-a222-08002b34c003"
-  }
+    "device": {
+        "deviceName": "My RanduhmmPi",
+        "deviceType": "urn:Randuhmm:device:hub:1",
+        "modelDescription": "Randuhmm Pi IoT Hub Device",
+        "modelName": "RanduhmmPi",
+        "serialNum": "",
+        "UDN": "uuid:2fac1234-31f8-11b4-a222-08002b34c003",
+        "children": [
+            {
+                "name": "Contact 01",
+                "id": "GPIO13",
+                "type": "RanduhmmContact"
+            },
+            {
+                "name": "Contact 02",
+                "id": "GPIO14",
+                "type": "RanduhmmContact"
+            },
+            {
+                "name": "Contact 03",
+                "id": "GPIO15",
+                "type": "RanduhmmContact"
+            },
+            {
+                "name": "Switch 01",
+                "id": "GPIO17",
+                "type": "RanduhmmSwitch"
+            }
+        ]
+    }
 }
