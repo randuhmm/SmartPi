@@ -134,11 +134,12 @@ class RanduhmmHttpHandler2(SimpleHTTPServer.SimpleHTTPRequestHandler):
         result = 'false'
         if self.path[:3] == '/on':
             GPIO.output(13, True)
-            result = 'true'
+            result = '{"switch": "on"}'
         elif self.path[:4] == '/off':
             GPIO.output(13, False)
-            result = 'true'
+            result = '{"switch": "off"}'
         self.send_response(200)
+        self.send_header('Device-Id', 'GPIO17')
         self.end_headers()
         self.wfile.write(result)
         self.wfile.close()
