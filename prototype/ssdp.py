@@ -21,21 +21,10 @@ DISCOVERY_MSG = ('M-SEARCH * HTTP/1.1\r\n' +
                  'MAN: "ssdp:discover"\r\n' +
                  'HOST: 239.255.255.250:1900\r\n\r\n')
 
-'''
-LOCATION_MSG = ('HTTP/1.1 200 OK\r\n' +
-                'EXT:\r\n'
-                'ST: %(library)s\r\n'
-                'USN: {USN}\r\n'
-                'LOCATION: %(loc)s\r\n'
-                'SERVER: Linux/1.0 UPnP/1.1 Randuhmm/0.1\r\n'
-                'BOOTID.UPNP.ORG: 1234\r\n'
-                'CACHE-CONTROL: max-age=0\r\n\r\n').format(USN=USN)
-'''
-
 LOCATION_MSG = ('HTTP/1.1 200 OK\r\n' +
                 'CACHE-CONTROL: max-age=100\r\n' +
                 'EXT:\r\n' +
-                'LOCATION: http://172.28.16.27:80/device.json\r\n' +
+                'LOCATION: http://172.28.16.27:8080/device.json\r\n' +
                 'SERVER: Linux/1.0 UPnP/1.0 Randuhmm/0.1\r\n' +
                 'ST: %(library)s\r\n' +
                 'USN: {USN}\r\n').format(USN=USN)
@@ -74,13 +63,15 @@ def client(timeout=1, retries=5):
 
     for _ in xrange(retries):
         for addr in interface_addresses():
-            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+            print addr
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM,
+                                 socket.IPPROTO_UDP)
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 2)
             sock.bind((addr, 0))
 
             msg = DISCOVERY_MSG % dict(service='1', library=LIB_ID)
-            #import pdb; pdb.set_trace()
+            # import pdb; pdb.set_trace()
             for _ in xrange(2):
                 # sending it more than once will
                 # decrease the probability of a timeout
@@ -104,7 +95,7 @@ def server(timeout=30):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 30)
-    sock.bind(('', MCAST_PORT))
+    sock.bind(('192.168.8.12', MCAST_PORT))
 
     mreq = struct.pack('4sl', socket.inet_aton(MCAST_GRP), socket.INADDR_ANY)
     sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
@@ -120,21 +111,17 @@ def handle_requests(sock, _):
     request = Request(data)
     if 'ST' in request.headers:
         print request.headers['ST']
-
     if not request.error_code and \
             request.command == 'M-SEARCH' and \
             request.path == '*' and \
             request.headers['ST'].startswith(LIB_ID) and \
             request.headers['MAN'] == '"ssdp:discover"':
-
-        print request.headers.keys()
         service = request.headers['ST'].split(':')[-1]
         if service in SERVICE_LOCS:
             loc = SERVICE_LOCS[service]
             msg = LOCATION_MSG % dict(service=service, loc=loc, library=LIB_ID)
             print msg, addr
             sock.sendto(msg, addr)
-
     return True
 
 

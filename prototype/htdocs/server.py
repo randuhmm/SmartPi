@@ -1,9 +1,15 @@
 import SimpleHTTPServer
 import SocketServer
 
-PORT = 80
+PORT = 8080
 
-Handler = SimpleHTTPServer.SimpleHTTPRequestHandler
+
+class MyHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
+
+    def do_SUBSCRIBE(self):
+        import pdb; pdb.set_trace()
+
+Handler = MyHandler
 Handler.extensions_map['.json'] = 'application/json'
 
 httpd = SocketServer.TCPServer(("", PORT), Handler)
