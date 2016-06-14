@@ -1,0 +1,5 @@
+
+
+Raspberry Pi:
+
+- Must run 'sudo apt-get install python-dev' before 'pip install RPi.GPIO'

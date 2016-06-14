@@ -63,7 +63,7 @@ if os.name == 'nt':
     GPIO = WindowsGPIO()
     BaseServer = SocketServer.TCPServer
 elif 'posix':
-    import GPIO.GPIO as GPIO
+    import RPi.GPIO as GPIO
     BaseServer = SocketServer.UnixStreamServer
 
 
@@ -203,14 +203,14 @@ class GpioManager(object):
     def gen_task_name(self, name, module):
         return gen_task_name(self, name, module)
 
-    def gpio_setup(self, *args):
-        return self._GPIO.setup(*args)
+    def gpio_setup(self, *args, **kwargs):
+        return self._GPIO.setup(*args, **kwargs)
 
-    def gpio_output(self, *args):
-        return self._GPIO.output(*args)
+    def gpio_output(self, *args, **kwargs):
+        return self._GPIO.output(*args, **kwargs)
 
-    def gpio_input(self, *args):
-        return self._GPIO.setup(*args)
+    def gpio_input(self, *args, **kwargs):
+        return self._GPIO.input(*args, **kwargs)
 
     def gpio_add_event_detect(self, gpio, edge, callback=None,
                               bouncetime=None):
@@ -221,6 +221,7 @@ class GpioManager(object):
     def run(self):
 
         # setup gpio
+        self.GPIO.setmode(self.GPIO.BOARD)
         for fun in self._setup_funcs:
             obj = type(fun.__name__, (Setup,), dict({
                 'app': self,
@@ -236,7 +237,13 @@ class GpioManager(object):
             # Activate the server; this will keep running until you
             # interrupt the program with Ctrl-C
         elif BaseServer == SocketServer.UnixStreamServer:
-            pass
+            server_address = './gpio.sock'
+            try:
+                os.unlink(server_address)
+            except OSError:
+                if os.path.exists(server_address):
+                    raise
+            server = GpioServer(self, server_address, GpioRequestHandler)
         server_thread = threading.Thread(target=server.serve_forever)
         server_thread.setDaemon(True)
         server_thread.start()
@@ -248,6 +255,7 @@ class GpioManager(object):
                 q = raw_input()
                 if h.interrupted or q == 'q':
                     running = False
+                    self.GPIO.cleanup()
                     print('Exiting')
 
     def _load_config(self):
@@ -266,7 +274,7 @@ class Setup(object):
 class Command(object):
 
     def apply(self, *args, **kwargs):
-        HOST, PORT = 'localhost', 9999
+
         command = {
             'id': 123,
             'type': 'command',
@@ -275,13 +283,22 @@ class Command(object):
             'kwargs': kwargs,
         }
         data = 'pickle:%s' % base64.b64encode(pickle.dumps(command))
-
-        # Create a socket (SOCK_STREAM means a TCP socket)
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # send data
 
         try:
-            # Connect to server and send data
-            sock.connect((HOST, PORT))
+
+            # setup socket connection
+            if BaseServer == SocketServer.TCPServer:
+                HOST, PORT = 'localhost', 9999
+                # Create a socket (SOCK_STREAM means a TCP socket)
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.connect((HOST, PORT))
+            elif BaseServer == SocketServer.UnixStreamServer:
+                server_address = './gpio.sock'
+                # Create a socket (SOCK_STREAM means a TCP socket)
+                sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                sock.connect(server_address)
+
             sock.sendall(data + '\n')
 
             # Receive data from the server and shut down
@@ -296,7 +313,6 @@ class Command(object):
                 raise Exception()
 
         finally:
-            print("CLOSING")
             sock.close()
 
 

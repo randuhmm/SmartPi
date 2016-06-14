@@ -1,6 +1,7 @@
 from __future__ import absolute_import, unicode_literals
 
 import os
+import time
 
 from gpio_manager import GpioManager
 
@@ -21,22 +22,34 @@ app.autodiscover()
 
 @app.setup
 def test_setup(self):
-    self.app.gpio_setup(13, app.GPIO.OUTPUT)
-    #self.app.gpio_add_event_detect(13, app.GPIO.RISING, handle_on)
+    self.app.gpio_setup(13, self.app.GPIO.IN,
+                        pull_up_down=self.app.GPIO.PUD_DOWN)
+    self.app.gpio_add_event_detect(13, app.GPIO.RISING,
+                                   callback=handle_on,
+                                   bouncetime=200)
 
 
 @app.command
 def turn_on(self, pin):
     print 'turn_on'
-    return self.app.gpio_output(pin, app.GPIO.HIGH)
+    ret = self.app.gpio_output(pin, self.app.GPIO.HIGH)
+    import pdb; pdb.set_trace()
+    return ret
 
 
 @app.command
 def turn_off(self, pin):
     print 'turn_off'
-    return self.app.gpio_output(pin, app.GPIO.LOW)
+    return self.app.gpio_output(pin, self.app.GPIO.LOW)
+
+
+@app.command
+def get_input(self, pin):
+    return self.app.gpio_input(pin)
 
 
 @app.input_handler
 def handle_on(self, channel):
-    import pdb; pdb.set_trace()
+    time.sleep(0.1)
+    v = self.app.GPIO.input(channel)
+    print 'handle_on %d' % v
