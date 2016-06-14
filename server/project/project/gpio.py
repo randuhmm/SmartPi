@@ -19,37 +19,5 @@ app.config_from_object('django.conf:settings')
 # load task modules from all registered Django app configs.
 app.autodiscover()
 
-
-@app.setup
-def test_setup(self):
-    self.app.gpio_setup(13, self.app.GPIO.IN,
-                        pull_up_down=self.app.GPIO.PUD_DOWN)
-    self.app.gpio_add_event_detect(13, app.GPIO.RISING,
-                                   callback=handle_on,
-                                   bouncetime=200)
-
-
-@app.command
-def turn_on(self, pin):
-    print 'turn_on'
-    ret = self.app.gpio_output(pin, self.app.GPIO.HIGH)
-    import pdb; pdb.set_trace()
-    return ret
-
-
-@app.command
-def turn_off(self, pin):
-    print 'turn_off'
-    return self.app.gpio_output(pin, self.app.GPIO.LOW)
-
-
-@app.command
-def get_input(self, pin):
-    return self.app.gpio_input(pin)
-
-
-@app.input_handler
-def handle_on(self, channel):
-    time.sleep(0.1)
-    v = self.app.GPIO.input(channel)
-    print 'handle_on %d' % v
+# TODO: don't manually import tasks here, allow for autodiscovery above
+from django_smartpi import gpio  # noqa

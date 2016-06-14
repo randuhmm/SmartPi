@@ -39,23 +39,33 @@ VERSION_BANNER = '{0} ({1})'.format(__version__, SERIES)
 
 class WindowsGPIO(object):
 
-    INPUT = None
-    OUTPUT = None
+    BOARD = None
+    BCM = None
+    IN = None
+    OUT = None
     RISING = None
     FALLING = None
     HIGH = None
     LOW = None
+    PUD_DOWN = None
+    PUD_UP = None
 
-    def setup(*args):
-        print(args)
-
-    def input(*args):
+    def setup(*args, **kwargs):
         pass
 
-    def output(*args):
+    def setmode(*args, **kwargs):
         pass
 
-    def add_event_detect(*args):
+    def input(*args, **kwargs):
+        pass
+
+    def output(*args, **kwargs):
+        pass
+
+    def add_event_detect(*args, **kwargs):
+        pass
+
+    def cleanup(*args, **kwargs):
         pass
 
 
@@ -127,14 +137,35 @@ def gen_task_name(app, name, module_name):
     return '.'.join(p for p in (module_name, name) if p)
 
 
+def shared_init(*args, **opts):
+    app = GpioManager.get_current_app()
+    return app.init(*args, **opts)
+
+
+def shared_command(*args, **opts):
+    app = GpioManager.get_current_app()
+    return app.command(*args, **opts)
+
+
 class GpioManager(object):
 
+    _apps = []
+
     def __init__(self, *args):
+        print('GpioManager:__init__')
         self._GPIO = GPIO
         self._conf = None
-        self._setup_funcs = []
-        self._commands = {}
+        self._init_funcs = {}
+        self._command_funcs = {}
         self._input_handlers = {}
+        GpioManager._apps.append(self)
+
+    def __del__(self):
+        GpioManager._apps.remove(self)
+
+    @staticmethod
+    def get_current_app():
+        return GpioManager._apps[0]
 
     @property
     def GPIO(self):
@@ -154,43 +185,24 @@ class GpioManager(object):
             self._conf = self._load_config()
         return self._conf
 
-    def setup(self, *args, **opts):
-        self._setup_funcs.append(args[0])
+    def get_command_by_name(self, name):
+        return self._command_funcs[name]
+
+    def init(self, *args, **opts):
+        return self.create_func(Init, self._init_funcs, *args, **opts)
 
     def command(self, *args, **opts):
+        return self.create_func(Command, self._command_funcs, *args, **opts)
 
+    def create_func(self, _class, _dict, *args, **opts):
         def create_func_cls(fun):
             name = self.gen_task_name(fun.__name__, fun.__module__)
-            ret = type(fun.__name__, (Command,), dict({
+            ret = type(fun.__name__, (_class,), dict({
                 'app': self,
                 'name': name,
                 'run': fun}, **opts))()
-            self._commands[name] = ret
+            _dict[name] = ret
             return ret
-
-        if len(args) == 1:
-            if callable(args[0]):
-                return create_func_cls(*args)
-            raise TypeError('argument 1 to @task() must be a callable')
-        else:
-            raise TypeError(
-                '@task() takes exactly 1 argument ({0} given)'.format(
-                    sum([len(args), len(opts)])))
-
-    def get_command_by_name(self, name):
-        return self._commands[name]
-
-    def input_handler(self, *args, **opts):
-
-        def create_func_cls(fun):
-            name = self.gen_task_name(fun.__name__, fun.__module__)
-            ret = type(fun.__name__, (InputHandler,), dict({
-                'app': self,
-                'name': name,
-                'run': fun}, **opts))()
-            self._input_handlers[name] = ret
-            return ret
-
         if len(args) == 1:
             if callable(args[0]):
                 return create_func_cls(*args)
@@ -222,12 +234,8 @@ class GpioManager(object):
 
         # setup gpio
         self.GPIO.setmode(self.GPIO.BOARD)
-        for fun in self._setup_funcs:
-            obj = type(fun.__name__, (Setup,), dict({
-                'app': self,
-                'name': self.gen_task_name(fun.__name__, fun.__module__),
-                'run': fun},))()
-            obj.run()
+        for name, func in self._init_funcs.iteritems():
+            func.run()
 
         # setup socket server
         if BaseServer == SocketServer.TCPServer:
@@ -267,7 +275,7 @@ class GpioManager(object):
         return self._conf
 
 
-class Setup(object):
+class Init(object):
     pass
 
 
@@ -314,10 +322,6 @@ class Command(object):
 
         finally:
             sock.close()
-
-
-class InputHandler(object):
-    pass
 
 
 class GracefulInterruptHandler(object):
