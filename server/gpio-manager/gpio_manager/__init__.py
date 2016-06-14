@@ -5,10 +5,14 @@ from __future__ import absolute_import, print_function, unicode_literals
 import os
 import signal
 import sys
+import socket
+import SocketServer
+import threading
+import pickle
+import base64
 
 from collections import namedtuple
 from importlib import import_module
-from vine.utils import wraps
 
 
 version_info_t = namedtuple(
@@ -37,6 +41,10 @@ class WindowsGPIO(object):
 
     INPUT = None
     OUTPUT = None
+    RISING = None
+    FALLING = None
+    HIGH = None
+    LOW = None
 
     def setup(*args):
         print(args)
@@ -47,11 +55,51 @@ class WindowsGPIO(object):
     def output(*args):
         pass
 
+    def add_event_detect(*args):
+        pass
+
 
 if os.name == 'nt':
     GPIO = WindowsGPIO()
+    BaseServer = SocketServer.TCPServer
 elif 'posix':
     import GPIO.GPIO as GPIO
+    BaseServer = SocketServer.UnixStreamServer
+
+
+class GpioRequestHandler(SocketServer.BaseRequestHandler):
+
+    def handle(self):
+        # self.request is the TCP socket connected to the client
+        self.data = self.request.recv(1024).strip()
+        encoding, encoded_data = self.data.split(':')
+        if encoding == 'pickle':
+            decoded_data = pickle.loads(base64.b64decode(encoded_data))
+        elif encoding == 'json':
+            # TODO:
+            pass
+        else:
+            raise Exception()
+
+        request_type = decoded_data['type']
+        result = None
+        if request_type == 'command':
+            name = decoded_data['command']
+            command = self.server.gpio_manager.get_command_by_name(name)
+            args = decoded_data['args']
+            kwargs = decoded_data['kwargs']
+            result = command.run(*args, **kwargs)
+
+        if encoding == 'pickle':
+            response_data = base64.b64encode(pickle.dumps(result))
+        self.request.sendall('%s:%s' % (encoding, response_data))
+
+
+class GpioServer(BaseServer):
+
+    def __init__(self, gpio_manager, *args, **kwargs):
+        self.gpio_manager = gpio_manager
+        BaseServer.__init__(self, *args, **kwargs)
 
 
 MP_MAIN_FILE = os.environ.get('MP_MAIN_FILE')
@@ -82,22 +130,18 @@ def gen_task_name(app, name, module_name):
 class GpioManager(object):
 
     def __init__(self, *args):
-        print(args)
+        self._GPIO = GPIO
         self._conf = None
         self._setup_funcs = []
-        self.GPIO = GPIO
-        self._tasks = {}
+        self._commands = {}
+        self._input_handlers = {}
+
+    @property
+    def GPIO(self):
+        return self._GPIO
 
     def config_from_object(self, obj):
         self._config_source = obj
-
-    def _load_config(self):
-        s = self._config_source.split(':')
-        if len(s) == 2:
-            self._conf = getattr(import_module(s[0]), s[1])
-        else:
-            self._conf = import_module(s[0])
-        return self._conf
 
     def autodiscover(self):
         # TODO: autodiscover stuff...
@@ -113,43 +157,89 @@ class GpioManager(object):
     def setup(self, *args, **opts):
         self._setup_funcs.append(args[0])
 
-    def do(self, *args, **opts):
-        def inner_create_task_cls(shared=True, filter=None, lazy=True, **opts):
+    def command(self, *args, **opts):
 
-            def _create_task_cls(fun):
-                # ret = PromiseProxy(self._task_from_fun, (fun,), opts,
-                #                    __doc__=fun.__doc__)
-                # self._pending.append(ret)
-                ret = type(fun.__name__, (MyTask,), dict({
-                    'app': self,
-                    'name': self.gen_task_name(fun.__name__, fun.__module__),
-                    'run': staticmethod(fun),
-                    '_decorated': True,
-                    '__doc__': fun.__doc__,
-                    '__module__': fun.__module__,
-                    '__wrapped__': staticmethod(fun)}, **opts))()
-                return ret
-
-            return _create_task_cls
+        def create_func_cls(fun):
+            name = self.gen_task_name(fun.__name__, fun.__module__)
+            ret = type(fun.__name__, (Command,), dict({
+                'app': self,
+                'name': name,
+                'run': fun}, **opts))()
+            self._commands[name] = ret
+            return ret
 
         if len(args) == 1:
             if callable(args[0]):
-                return inner_create_task_cls(**opts)(*args)
+                return create_func_cls(*args)
             raise TypeError('argument 1 to @task() must be a callable')
-        if args:
+        else:
             raise TypeError(
                 '@task() takes exactly 1 argument ({0} given)'.format(
                     sum([len(args), len(opts)])))
-        return inner_create_task_cls(**opts)
+
+    def get_command_by_name(self, name):
+        return self._commands[name]
+
+    def input_handler(self, *args, **opts):
+
+        def create_func_cls(fun):
+            name = self.gen_task_name(fun.__name__, fun.__module__)
+            ret = type(fun.__name__, (InputHandler,), dict({
+                'app': self,
+                'name': name,
+                'run': fun}, **opts))()
+            self._input_handlers[name] = ret
+            return ret
+
+        if len(args) == 1:
+            if callable(args[0]):
+                return create_func_cls(*args)
+            raise TypeError('argument 1 to @task() must be a callable')
+        else:
+            raise TypeError(
+                '@task() takes exactly 1 argument ({0} given)'.format(
+                    sum([len(args), len(opts)])))
 
     def gen_task_name(self, name, module):
         return gen_task_name(self, name, module)
 
+    def gpio_setup(self, *args):
+        return self._GPIO.setup(*args)
+
+    def gpio_output(self, *args):
+        return self._GPIO.output(*args)
+
+    def gpio_input(self, *args):
+        return self._GPIO.setup(*args)
+
+    def gpio_add_event_detect(self, gpio, edge, callback=None,
+                              bouncetime=None):
+        if callback is not None:
+            fx = callback.run
+        return self._GPIO.add_event_detect(gpio, edge, fx, bouncetime)
+
     def run(self):
 
         # setup gpio
-        for setup_func in self._setup_funcs:
-            setup_func(self)
+        for fun in self._setup_funcs:
+            obj = type(fun.__name__, (Setup,), dict({
+                'app': self,
+                'name': self.gen_task_name(fun.__name__, fun.__module__),
+                'run': fun},))()
+            obj.run()
+
+        # setup socket server
+        if BaseServer == SocketServer.TCPServer:
+            HOST, PORT = "localhost", 9999
+            # Create the server, binding to localhost on port 9999
+            server = GpioServer(self, (HOST, PORT), GpioRequestHandler)
+            # Activate the server; this will keep running until you
+            # interrupt the program with Ctrl-C
+        elif BaseServer == SocketServer.UnixStreamServer:
+            pass
+        server_thread = threading.Thread(target=server.serve_forever)
+        server_thread.setDaemon(True)
+        server_thread.start()
 
         running = True
         with GracefulInterruptHandler() as h:
@@ -160,8 +250,57 @@ class GpioManager(object):
                     running = False
                     print('Exiting')
 
+    def _load_config(self):
+        s = self._config_source.split(':')
+        if len(s) == 2:
+            self._conf = getattr(import_module(s[0]), s[1])
+        else:
+            self._conf = import_module(s[0])
+        return self._conf
 
-class MyTask(object):
+
+class Setup(object):
+    pass
+
+
+class Command(object):
+
+    def apply(self, *args, **kwargs):
+        HOST, PORT = 'localhost', 9999
+        command = {
+            'id': 123,
+            'type': 'command',
+            'command': self.name,
+            'args': args,
+            'kwargs': kwargs,
+        }
+        data = 'pickle:%s' % base64.b64encode(pickle.dumps(command))
+
+        # Create a socket (SOCK_STREAM means a TCP socket)
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+        try:
+            # Connect to server and send data
+            sock.connect((HOST, PORT))
+            sock.sendall(data + '\n')
+
+            # Receive data from the server and shut down
+            received_data = sock.recv(1024)
+            encoding, encoded_data = received_data.split(':')
+            if encoding == 'pickle':
+                return pickle.loads(base64.b64decode(encoded_data))
+            elif encoding == 'json':
+                # TODO:
+                pass
+            else:
+                raise Exception()
+
+        finally:
+            print("CLOSING")
+            sock.close()
+
+
+class InputHandler(object):
     pass
 
 
@@ -198,358 +337,3 @@ class GracefulInterruptHandler(object):
         self.released = True
 
         return True
-
-__module__ = __name__  # used by Proxy class body
-
-PY3 = sys.version_info[0] == 3
-
-from .five import bytes_if_py2, string
-
-
-def _default_cls_attr(name, type_, cls_value):
-    # Proxy uses properties to forward the standard
-    # class attributes __module__, __name__ and __doc__ to the real
-    # object, but these needs to be a string when accessed from
-    # the Proxy class directly.  This is a hack to make that work.
-    # -- See Issue #1087.
-
-    def __new__(cls, getter):
-        instance = type_.__new__(cls, cls_value)
-        instance.__getter = getter
-        return instance
-
-    def __get__(self, obj, cls=None):
-        return self.__getter(obj) if obj is not None else self
-
-    return type(bytes_if_py2(name), (type_,), {
-        '__new__': __new__, '__get__': __get__,
-    })
-
-
-def try_import(module, default=None):
-    """Try to import and return module, or return
-    None if the module does not exist."""
-    try:
-        return import_module(module)
-    except ImportError:
-        return default
-
-
-class Proxy(object):
-    """Proxy to another object."""
-
-    # Code stolen from werkzeug.local.Proxy.
-    __slots__ = ('__local', '__args', '__kwargs', '__dict__')
-
-    def __init__(self, local,
-                 args=None, kwargs=None, name=None, __doc__=None):
-        object.__setattr__(self, '_Proxy__local', local)
-        object.__setattr__(self, '_Proxy__args', args or ())
-        object.__setattr__(self, '_Proxy__kwargs', kwargs or {})
-        if name is not None:
-            object.__setattr__(self, '__custom_name__', name)
-        if __doc__ is not None:
-            object.__setattr__(self, '__doc__', __doc__)
-
-    @_default_cls_attr('name', str, __name__)
-    def __name__(self):
-        try:
-            return self.__custom_name__
-        except AttributeError:
-            return self._get_current_object().__name__
-
-    @_default_cls_attr('qualname', str, __name__)
-    def __qualname__(self):
-        try:
-            return self.__custom_name__
-        except AttributeError:
-            return self._get_current_object().__qualname__
-
-    @_default_cls_attr('module', str, __module__)
-    def __module__(self):
-        return self._get_current_object().__module__
-
-    @_default_cls_attr('doc', str, __doc__)
-    def __doc__(self):
-        return self._get_current_object().__doc__
-
-    def _get_class(self):
-        return self._get_current_object().__class__
-
-    @property
-    def __class__(self):
-        return self._get_class()
-
-    def _get_current_object(self):
-        """Return the current object.  This is useful if you want the real
-        object behind the proxy at a time for performance reasons or because
-        you want to pass the object into a different context.
-        """
-        loc = object.__getattribute__(self, '_Proxy__local')
-        if not hasattr(loc, '__release_local__'):
-            return loc(*self.__args, **self.__kwargs)
-        try:  # pragma: no cover
-            # not sure what this is about
-            return getattr(loc, self.__name__)
-        except AttributeError:  # pragma: no cover
-            raise RuntimeError('no object bound to {0.__name__}'.format(self))
-
-    @property
-    def __dict__(self):
-        try:
-            return self._get_current_object().__dict__
-        except RuntimeError:  # pragma: no cover
-            raise AttributeError('__dict__')
-
-    def __repr__(self):
-        try:
-            obj = self._get_current_object()
-        except RuntimeError:  # pragma: no cover
-            return '<{0} unbound>'.format(self.__class__.__name__)
-        return repr(obj)
-
-    def __bool__(self):
-        try:
-            return bool(self._get_current_object())
-        except RuntimeError:  # pragma: no cover
-            return False
-    __nonzero__ = __bool__  # Py2
-
-    def __dir__(self):
-        try:
-            return dir(self._get_current_object())
-        except RuntimeError:  # pragma: no cover
-            return []
-
-    def __getattr__(self, name):
-        if name == '__members__':
-            return dir(self._get_current_object())
-        return getattr(self._get_current_object(), name)
-
-    def __setitem__(self, key, value):
-        self._get_current_object()[key] = value
-
-    def __delitem__(self, key):
-        del self._get_current_object()[key]
-
-    def __setslice__(self, i, j, seq):
-        self._get_current_object()[i:j] = seq
-
-    def __delslice__(self, i, j):
-        del self._get_current_object()[i:j]
-
-    def __setattr__(self, name, value):
-        setattr(self._get_current_object(), name, value)
-
-    def __delattr__(self, name):
-        delattr(self._get_current_object(), name)
-
-    def __str__(self):
-        return str(self._get_current_object())
-
-    def __lt__(self, other):
-        return self._get_current_object() < other
-
-    def __le__(self, other):
-        return self._get_current_object() <= other
-
-    def __eq__(self, other):
-        return self._get_current_object() == other
-
-    def __ne__(self, other):
-        return self._get_current_object() != other
-
-    def __gt__(self, other):
-        return self._get_current_object() > other
-
-    def __ge__(self, other):
-        return self._get_current_object() >= other
-
-    def __hash__(self):
-        return hash(self._get_current_object())
-
-    def __call__(self, *a, **kw):
-        return self._get_current_object()(*a, **kw)
-
-    def __len__(self):
-        return len(self._get_current_object())
-
-    def __getitem__(self, i):
-        return self._get_current_object()[i]
-
-    def __iter__(self):
-        return iter(self._get_current_object())
-
-    def __contains__(self, i):
-        return i in self._get_current_object()
-
-    def __getslice__(self, i, j):
-        return self._get_current_object()[i:j]
-
-    def __add__(self, other):
-        return self._get_current_object() + other
-
-    def __sub__(self, other):
-        return self._get_current_object() - other
-
-    def __mul__(self, other):
-        return self._get_current_object() * other
-
-    def __floordiv__(self, other):
-        return self._get_current_object() // other
-
-    def __mod__(self, other):
-        return self._get_current_object() % other
-
-    def __divmod__(self, other):
-        return self._get_current_object().__divmod__(other)
-
-    def __pow__(self, other):
-        return self._get_current_object() ** other
-
-    def __lshift__(self, other):
-        return self._get_current_object() << other
-
-    def __rshift__(self, other):
-        return self._get_current_object() >> other
-
-    def __and__(self, other):
-        return self._get_current_object() & other
-
-    def __xor__(self, other):
-        return self._get_current_object() ^ other
-
-    def __or__(self, other):
-        return self._get_current_object() | other
-
-    def __div__(self, other):
-        return self._get_current_object().__div__(other)
-
-    def __truediv__(self, other):
-        return self._get_current_object().__truediv__(other)
-
-    def __neg__(self):
-        return -(self._get_current_object())
-
-    def __pos__(self):
-        return +(self._get_current_object())
-
-    def __abs__(self):
-        return abs(self._get_current_object())
-
-    def __invert__(self):
-        return ~(self._get_current_object())
-
-    def __complex__(self):
-        return complex(self._get_current_object())
-
-    def __int__(self):
-        return int(self._get_current_object())
-
-    def __float__(self):
-        return float(self._get_current_object())
-
-    def __oct__(self):
-        return oct(self._get_current_object())
-
-    def __hex__(self):
-        return hex(self._get_current_object())
-
-    def __index__(self):
-        return self._get_current_object().__index__()
-
-    def __coerce__(self, other):
-        return self._get_current_object().__coerce__(other)
-
-    def __enter__(self):
-        return self._get_current_object().__enter__()
-
-    def __exit__(self, *a, **kw):
-        return self._get_current_object().__exit__(*a, **kw)
-
-    def __reduce__(self):
-        return self._get_current_object().__reduce__()
-
-    if not PY3:  # pragma: no cover
-        def __cmp__(self, other):
-            return cmp(self._get_current_object(), other)  # noqa
-
-        def __long__(self):
-            return long(self._get_current_object())  # noqa
-
-        def __unicode__(self):
-            try:
-                return string(self._get_current_object())
-            except RuntimeError:  # pragma: no cover
-                return repr(self)
-
-
-class PromiseProxy(Proxy):
-    """This is a proxy to an object that has not yet been evaulated.
-    :class:`Proxy` will evaluate the object each time, while the
-    promise will only evaluate it once.
-    """
-
-    __slots__ = ('__pending__',)
-
-    def _get_current_object(self):
-        try:
-            return object.__getattribute__(self, '__thing')
-        except AttributeError:
-            return self.__evaluate__()
-
-    def __then__(self, fun, *args, **kwargs):
-        if self.__evaluated__():
-            return fun(*args, **kwargs)
-        from collections import deque
-        try:
-            pending = object.__getattribute__(self, '__pending__')
-        except AttributeError:
-            pending = None
-        if pending is None:
-            pending = deque()
-            object.__setattr__(self, '__pending__', pending)
-        pending.append((fun, args, kwargs))
-
-    def __evaluated__(self):
-        try:
-            object.__getattribute__(self, '__thing')
-        except AttributeError:
-            return False
-        return True
-
-    def __maybe_evaluate__(self):
-        return self._get_current_object()
-
-    def __evaluate__(self,
-                     _clean=('_Proxy__local',
-                             '_Proxy__args',
-                             '_Proxy__kwargs')):
-        try:
-            thing = Proxy._get_current_object(self)
-        except:
-            raise
-        else:
-            object.__setattr__(self, '__thing', thing)
-            for attr in _clean:
-                try:
-                    object.__delattr__(self, attr)
-                except AttributeError:  # pragma: no cover
-                    # May mask errors so ignore
-                    pass
-            try:
-                pending = object.__getattribute__(self, '__pending__')
-            except AttributeError:
-                pass
-            else:
-                try:
-                    while pending:
-                        fun, args, kwargs = pending.popleft()
-                        fun(*args, **kwargs)
-                finally:
-                    try:
-                        object.__delattr__(self, '__pending__')
-                    except AttributeError:  # pragma: no cover
-                        pass
-            return thing
-

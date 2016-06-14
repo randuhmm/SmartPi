@@ -20,10 +20,23 @@ app.autodiscover()
 
 
 @app.setup
-def test_setup(app):
-    app.GPIO.setup(13, app.GPIO.INPUT)
+def test_setup(self):
+    self.app.gpio_setup(13, app.GPIO.OUTPUT)
+    #self.app.gpio_add_event_detect(13, app.GPIO.RISING, handle_on)
 
 
-@app.do
-def turnon(app, pin):
-    print "on"
+@app.command
+def turn_on(self, pin):
+    print 'turn_on'
+    return self.app.gpio_output(pin, app.GPIO.HIGH)
+
+
+@app.command
+def turn_off(self, pin):
+    print 'turn_off'
+    return self.app.gpio_output(pin, app.GPIO.LOW)
+
+
+@app.input_handler
+def handle_on(self, channel):
+    import pdb; pdb.set_trace()
