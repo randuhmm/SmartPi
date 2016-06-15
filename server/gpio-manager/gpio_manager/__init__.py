@@ -152,7 +152,6 @@ class GpioManager(object):
     _apps = []
 
     def __init__(self, *args):
-        print('GpioManager:__init__')
         self._GPIO = GPIO
         self._conf = None
         self._init_funcs = {}
