@@ -1,36 +1,61 @@
 from gpio_manager import shared_init, shared_command
+from django.core.exceptions import ObjectDoesNotExist
 import time
+
+from django_smartpi.models import GpioDevice, GpioPin
 
 
 @shared_init
-def init(self):
-    print "test setup"
-    self.app.gpio_setup(13, self.app.GPIO.OUT)
-    self.app.gpio_setup(11, self.app.GPIO.IN,
-                        pull_up_down=self.app.GPIO.PUD_UP)
-    self.app.gpio_add_event_detect(11, self.app.GPIO.BOTH,
-                                   callback=handle_on,
-                                   bouncetime=200)
+def gpio_init(self):
+    subclasses = GpioDevice.__class__.__subclasses__(GpioDevice)
+    for subclass in subclasses:
+        for obj in subclass.objects.all():
+            obj.gpio_init(self.app)
 
 
 @shared_command
-def setup(self, pin, mode, **kwargs):
+def gpio_add_device(self, device):
+    print 'adding device'
+    device.gpio_init(self.app)
+
+
+@shared_command
+def gpio_delete_device(self, device):
+    print 'deleteing device'
+    device.gpio_reset(self.app)
+
+
+@shared_command
+def gpio_update_device(self, device):
+    print 'updating device'
+    device.gpio_reset(self.app)
+    device.gpio_init(self.app)
+
+
+@shared_command
+def gpio_setup(self, pin, mode, **kwargs):
     self.app.gpio_setup(pin, mode, **kwargs)
 
 
 @shared_command
-def cleanup(self, *args):
+def gpio_cleanup(self, *args):
     return self.app.gpio_cleanup(*args)
 
 
 @shared_command
-def output(self, pin, value):
+def gpio_output(self, pin, value):
+    print '%d %d' % (pin, value)
     self.app.gpio_output(pin, value)
 
 
 @shared_command
-def input(self, pin):
-    return self.app.gpio_input(pin)
+def gpio_input(self, pin):
+    try:
+        device = GpioPin.objects.get(
+            pin_number=pin).gpiodevicepin.gpioinputdevice
+    except ObjectDoesNotExist:
+        return
+    device.gpio_input(self.app)
 
 
 @shared_command

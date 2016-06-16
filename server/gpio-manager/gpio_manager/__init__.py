@@ -10,6 +10,7 @@ import SocketServer
 import threading
 import pickle
 import base64
+import django
 
 from collections import namedtuple
 from importlib import import_module
@@ -49,6 +50,7 @@ class WindowsGPIO(object):
     LOW = None
     PUD_DOWN = None
     PUD_UP = None
+    BOTH = None
 
     def setup(*args, **kwargs):
         pass
@@ -82,7 +84,11 @@ class GpioRequestHandler(SocketServer.BaseRequestHandler):
     def handle(self):
         # self.request is the TCP socket connected to the client
         self.data = self.request.recv(1024).strip()
-        encoding, encoded_data = self.data.split(':')
+        encoding, encoded_size, encoded_data = self.data.split(':')
+        encoded_size = int(encoded_size)
+        while encoded_size > len(encoded_data):
+            encoded_data += self.request.recv(1024).strip()
+
         if encoding == 'pickle':
             decoded_data = pickle.loads(base64.b64decode(encoded_data))
         elif encoding == 'json':
@@ -159,6 +165,9 @@ class GpioManager(object):
         self._input_handlers = {}
         GpioManager._apps.append(self)
 
+        # Setup django
+        django.setup()
+
     def __del__(self):
         GpioManager._apps.remove(self)
 
@@ -223,13 +232,21 @@ class GpioManager(object):
     def gpio_input(self, *args, **kwargs):
         return self._GPIO.input(*args, **kwargs)
 
-    def gpio_add_event_detect(self, gpio, edge, callback=None,
+    def gpio_cleanup(self, *args, **kwargs):
+        return self._GPIO.cleanup(*args, **kwargs)
+
+    def gpio_add_event_detect(self, gpio, edge, callback,
                               bouncetime=None):
         if callback is not None:
             fx = callback.run
         return self._GPIO.add_event_detect(gpio, edge, fx, bouncetime)
 
+    def gpio_remove_event_detect(self, *args, **kwargs):
+        return self._GPIO.remove_event_detect(*args, **kwargs)
+
     def run(self):
+
+        django.setup()
 
         # setup gpio
         self.GPIO.setmode(self.GPIO.BOARD)
@@ -289,11 +306,10 @@ class Command(object):
             'args': args,
             'kwargs': kwargs,
         }
-        data = 'pickle:%s' % base64.b64encode(pickle.dumps(command))
-        # send data
+        encoded_command = base64.b64encode(pickle.dumps(command))
+        data = 'pickle:%d:%s' % (len(encoded_command), encoded_command)
 
         try:
-
             # setup socket connection
             if BaseServer == SocketServer.TCPServer:
                 HOST, PORT = 'localhost', 9999
@@ -305,7 +321,6 @@ class Command(object):
                 # Create a socket (SOCK_STREAM means a TCP socket)
                 sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
                 sock.connect(server_address)
-
             sock.sendall(data + '\n')
 
             # Receive data from the server and shut down

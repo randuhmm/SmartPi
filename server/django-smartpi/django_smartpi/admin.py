@@ -1,10 +1,9 @@
 from django.contrib import admin
-from django_smartpi.models import (Device, GpioDevice, GpioContactSensor,
-                                   GpioDevicePin, GpioPin)
+from django_smartpi.models import (
+    GpioInputDevice, GpioDevicePin, GpioPin, GpioOutputDevice)
 
 
-admin.site.register(Device)
-admin.site.register(GpioDevice)
-admin.site.register(GpioContactSensor)
+admin.site.register(GpioOutputDevice)
+admin.site.register(GpioInputDevice)
 admin.site.register(GpioDevicePin)
 admin.site.register(GpioPin)
