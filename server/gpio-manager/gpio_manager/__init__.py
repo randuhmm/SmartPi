@@ -274,6 +274,7 @@ class GpioManager(object):
         server_thread = threading.Thread(target=server.serve_forever)
         server_thread.setDaemon(True)
         server_thread.start()
+        #server.serve_forever()
 
         running = True
         with GracefulInterruptHandler() as h:

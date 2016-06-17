@@ -52,7 +52,7 @@ def gpio_output(self, pin, value):
 def gpio_input(self, pin):
     try:
         device = GpioPin.objects.get(
-            pin_number=pin).gpiodevicepin.gpioinputdevice
+            pin_number=pin).gpioinputdevice
     except ObjectDoesNotExist:
         return
     device.gpio_input(self.app)

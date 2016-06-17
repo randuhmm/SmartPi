@@ -1,0 +1,442 @@
+[
+  {
+    "model": "myapp.person",
+    "pk": 1,
+    "fields": {
+"pin_number": 1,
+"pin_type": "3.3V",
+"gpio_number": null,
+"protocol_type": null,
+"protocol_id": null
+}
+},
+  {
+    "model": "myapp.person",
+    "pk": 3,
+    "fields": {
+"pin_number": 3,
+"pin_type": "GPIO",
+"gpio_number": 2,
+"protocol_type": "I2C",
+"protocol_id": "SDA0"
+}
+},
+  {
+    "model": "myapp.person",
+    "pk": 5,
+    "fields": {
+"pin_number": 5,
+"pin_type": "GPIO",
+"gpio_number": 3,
+"protocol_type": "I2C",
+"protocol_id": "SCL0"
+}
+},
+  {
+    "model": "myapp.person",
+    "pk": 7,
+    "fields": {
+"pin_number": 7,
+"pin_type": "GPIO",
+"gpio_number": 4,
+"protocol_type": null,
+"protocol_id": null
+}
+},
+  {
+    "model": "myapp.person",
+    "pk": 9,
+    "fields": {
+"pin_number": 9,
+"pin_type": "GND",
+"gpio_number": null,
+"protocol_type": null,
+"protocol_id": null
+}
+},
+  {
+    "model": "myapp.person",
+    "pk": 11,
+    "fields": {
+"pin_number": 11,
+"pin_type": "GPIO",
+"gpio_number": 17,
+"protocol_type": null,
+"protocol_id": null
+}
+},
+  {
+    "model": "myapp.person",
+    "pk": 13,
+    "fields": {
+"pin_number": 13,
+"pin_type": "GPIO",
+"gpio_number": 27,
+"protocol_type": null,
+"protocol_id": null
+}
+},
+  {
+    "model": "myapp.person",
+    "pk": 15,
+    "fields": {
+"pin_number": 15,
+"pin_type": "GPIO",
+"gpio_number": 22,
+"protocol_type": null,
+"protocol_id": null
+}
+},
+  {
+    "model": "myapp.person",
+    "pk": 17,
+    "fields": {
+"pin_number": 17,
+"pin_type": "3.3V",
+"gpio_number": null,
+"protocol_type": null,
+"protocol_id": null
+}
+},
+  {
+    "model": "myapp.person",
+    "pk": 19,
+    "fields": {
+"pin_number": 19,
+"pin_type": "GPIO",
+"gpio_number": 10,
+"protocol_type": "SPI",
+"protocol_id": "MOSI"
+}
+},
+  {
+    "model": "myapp.person",
+    "pk": 21,
+    "fields": {
+"pin_number": 21,
+"pin_type": "GPIO",
+"gpio_number": 9,
+"protocol_type": "SPI",
+"protocol_id": "MPSO"
+}
+},
+  {
+    "model": "myapp.person",
+    "pk": 23,
+    "fields": {
+"pin_number": 23,
+"pin_type": "GPIO",
+"gpio_number": 11,
+"protocol_type": "SPI",
+"protocol_id": "SCLK"
+}
+},
+  {
+    "model": "myapp.person",
+    "pk": 25,
+    "fields": {
+"pin_number": 25,
+"pin_type": "GND",
+"gpio_number": null,
+"protocol_type": null,
+"protocol_id": null
+}
+},
+  {
+    "model": "myapp.person",
+    "pk": 27,
+    "fields": {
+"pin_number": 27,
+"pin_type": "DNC",
+"gpio_number": null,
+"protocol_type": null,
+"protocol_id": null
+}
+},
+  {
+    "model": "myapp.person",
+    "pk": 29,
+    "fields": {
+"pin_number": 29,
+"pin_type": "GPIO",
+"gpio_number": 5,
+"protocol_type": null,
+"protocol_id": null
+}
+},
+  {
+    "model": "myapp.person",
+    "pk": 31,
+    "fields": {
+"pin_number": 31,
+"pin_type": "GPIO",
+"gpio_number": 6,
+"protocol_type": null,
+"protocol_id": null
+}
+},
+  {
+    "model": "myapp.person",
+    "pk": 33,
+    "fields": {
+"pin_number": 33,
+"pin_type": "GPIO",
+"gpio_number": 13,
+"protocol_type": null,
+"protocol_id": null
+}
+},
+  {
+    "model": "myapp.person",
+    "pk": 35,
+    "fields": {
+"pin_number": 35,
+"pin_type": "GPIO",
+"gpio_number": 19,
+"protocol_type": null,
+"protocol_id": null
+}
+},
+  {
+    "model": "myapp.person",
+    "pk": 37,
+    "fields": {
+"pin_number": 37,
+"pin_type": "GPIO",
+"gpio_number": 26,
+"protocol_type": null,
+"protocol_id": null
+}
+},
+  {
+    "model": "myapp.person",
+    "pk": 39,
+    "fields": {
+"pin_number": 39,
+"pin_type": "GND",
+"gpio_number": null,
+"protocol_type": null,
+"protocol_id": null
+}
+},
+  {
+    "model": "myapp.person",
+    "pk": 2,
+    "fields": {
+"pin_number": 2,
+"pin_type": "5V",
+"gpio_number": null,
+"protocol_type": null,
+"protocol_id": null
+}
+},
+  {
+    "model": "myapp.person",
+    "pk": 4,
+    "fields": {
+"pin_number": 4,
+"pin_type": "5V",
+"gpio_number": null,
+"protocol_type": null,
+"protocol_id": null
+}
+},
+  {
+    "model": "myapp.person",
+    "pk": 6,
+    "fields": {
+"pin_number": 6,
+"pin_type": "GND",
+"gpio_number": null,
+"protocol_type": null,
+"protocol_id": null
+}
+},
+  {
+    "model": "myapp.person",
+    "pk": 8,
+    "fields": {
+"pin_number": 8,
+"pin_type": "GPIO",
+"gpio_number": 14,
+"protocol_type": "UART",
+"protocol_id": "TXD"
+}
+},
+  {
+    "model": "myapp.person",
+    "pk": 10,
+    "fields": {
+"pin_number": 10,
+"pin_type": "GPIO",
+"gpio_number": 15,
+"protocol_type": "UART",
+"protocol_id": "RXD"
+}
+},
+  {
+    "model": "myapp.person",
+    "pk": 12,
+    "fields": {
+"pin_number": 12,
+"pin_type": "GPIO",
+"gpio_number": 18,
+"protocol_type": null,
+"protocol_id": null
+}
+},
+  {
+    "model": "myapp.person",
+    "pk": 14,
+    "fields": {
+"pin_number": 14,
+"pin_type": "GND",
+"gpio_number": null,
+"protocol_type": null,
+"protocol_id": null
+}
+},
+  {
+    "model": "myapp.person",
+    "pk": 16,
+    "fields": {
+"pin_number": 16,
+"pin_type": "GPIO",
+"gpio_number": 23,
+"protocol_type": null,
+"protocol_id": null
+}
+},
+  {
+    "model": "myapp.person",
+    "pk": 18,
+    "fields": {
+"pin_number": 18,
+"pin_type": "GPIO",
+"gpio_number": 24,
+"protocol_type": null,
+"protocol_id": null
+}
+},
+  {
+    "model": "myapp.person",
+    "pk": 20,
+    "fields": {
+"pin_number": 20,
+"pin_type": "GND",
+"gpio_number": null,
+"protocol_type": null,
+"protocol_id": null
+}
+},
+  {
+    "model": "myapp.person",
+    "pk": 22,
+    "fields": {
+"pin_number": 22,
+"pin_type": "GPIO",
+"gpio_number": 25,
+"protocol_type": null,
+"protocol_id": null
+}
+},
+  {
+    "model": "myapp.person",
+    "pk": 24,
+    "fields": {
+"pin_number": 24,
+"pin_type": "GPIO",
+"gpio_number": 8,
+"protocol_type": "SPI",
+"protocol_id": "CE0_N"
+}
+},
+  {
+    "model": "myapp.person",
+    "pk": 26,
+    "fields": {
+"pin_number": 26,
+"pin_type": "GPIO",
+"gpio_number": 7,
+"protocol_type": "SPI",
+"protocol_id": "CE1_N"
+}
+},
+  {
+    "model": "myapp.person",
+    "pk": 28,
+    "fields": {
+"pin_number": 28,
+"pin_type": "DNC",
+"gpio_number": null,
+"protocol_type": null,
+"protocol_id": null
+}
+},
+  {
+    "model": "myapp.person",
+    "pk": 30,
+    "fields": {
+"pin_number": 30,
+"pin_type": "GND",
+"gpio_number": null,
+"protocol_type": null,
+"protocol_id": null
+}
+},
+  {
+    "model": "myapp.person",
+    "pk": 32,
+    "fields": {
+"pin_number": 32,
+"pin_type": "GPIO",
+"gpio_number": 12,
+"protocol_type": null,
+"protocol_id": null
+}
+},
+  {
+    "model": "myapp.person",
+    "pk": 34,
+    "fields": {
+"pin_number": 34,
+"pin_type": "GND",
+"gpio_number": null,
+"protocol_type": null,
+"protocol_id": null
+}
+},
+  {
+    "model": "myapp.person",
+    "pk": 36,
+    "fields": {
+"pin_number": 36,
+"pin_type": "GPIO",
+"gpio_number": 16,
+"protocol_type": null,
+"protocol_id": null
+}
+},
+  {
+    "model": "myapp.person",
+    "pk": 38,
+    "fields": {
+"pin_number": 38,
+"pin_type": "GPIO",
+"gpio_number": 20,
+"protocol_type": null,
+"protocol_id": null
+}
+},
+  {
+    "model": "myapp.person",
+    "pk": 40,
+    "fields": {
+"pin_number": 40,
+"pin_type": "GPIO",
+"gpio_number": 21,
+"protocol_type": null,
+"protocol_id": null
+}
+}
+]
