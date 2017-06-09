@@ -104,10 +104,11 @@ metadata {
 
 // parse events into attributes
 def parse(String rawEvent) {
-	log.debug "Parsing '${rawEvent}'"
     def parsedEvent = parseLanMessage(rawEvent)
-    def childId = "GPIO17"
-    parent.dispatchEvent(childId, parsedEvent, rawEvent)
+    if(parsedEvent.headers.containsKey('Device-Id')) {
+    	def childId = parsedEvent.headers['Device-Id']
+    	parent.dispatchEvent(childId, parsedEvent, rawEvent)
+    }
 }
 
 // handle commands

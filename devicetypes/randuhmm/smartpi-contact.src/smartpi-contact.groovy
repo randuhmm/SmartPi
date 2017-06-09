@@ -16,41 +16,44 @@
 metadata {
     definition (name: "SmartPi Contact", namespace: "randuhmm", author: "Jonny Morrill") {
         capability "Contact Sensor"
+		capability "Refresh"
+		capability "Sensor"
     }
 
     simulator {
         // TODO: define status and reply messages here
     }
 
-    tiles {
-        standardTile("button", "device.switch", width: 1, height: 1, canChangeIcon: true) {
-            state "off", label: 'Off', icon: "st.Electronics.electronics18", backgroundColor: "#ffffff", nextState: "on"
-            state "on", label: 'On', icon: "st.Electronics.electronics18", backgroundColor: "#79b821", nextState: "off"
+	tiles(scale: 2) {
+
+        standardTile("contact", "device.contact", width: 2, height: 2, canChangeIcon: true) {
+            state "open", label: '${name}', icon:"st.contact.contact.open", backgroundColor:"#ffa81e"
+            state "closed", label: '${name}', icon:"st.contact.contact.closed", backgroundColor:"#79b821"
         }
-        main "button"
-        details(["button"])
-    }
+
+		standardTile("refresh", "device.refresh", inactiveLabel: false, decoration: "flat", width: 2, height: 2) {
+			state "default", action:"refresh.refresh", icon:"st.secondary.refresh"
+		}
+
+		main (["contact"])
+		details(["contact","refresh"])
+	}
+    
 }
 
 // parse events into attributes
-def parse(String description) {
-    log.debug "Parsing '${description}'"
-    // TODO: handle 'contact' attribute
-    // TODO: handle 'switch' attribute
-    // TODO: handle 'temperature' attribute
+def parse(String rawEvent) {
+    def parsedEvent = parseLanMessage(rawEvent)
+    log.debug "parsedEvent: ${parsedEvent}"
+    
+    if(parsedEvent?.json?.state == 1) {
+        sendEvent(name: "contact", value: "open")
+    } else {
+        sendEvent(name: "contact", value: "closed")
+    }
 }
 
-// handle commands
-def on() {
-    log.debug "Executing 'on'"
-    // TODO: handle 'on' command
-}
-
-def off() {
-    log.debug "Executing 'off'"
-    // TODO: handle 'off' command
-}
-
+// Handle device data update
 def sync(ip, port) {
     def existingIp = getDataValue("ip")
     def existingPort = getDataValue("port")
@@ -62,27 +65,26 @@ def sync(ip, port) {
     }
 }
 
-def restart() {
-    subscribeAction("/path/of/event")
+def refresh() {
+	log.debug "Executing WeMo Motion 'subscribe', then 'timeSyncResponse', then 'getStatus'"
+	subscribe()
 }
 
-private subscribeAction(path, callbackPath="") {
-    log.trace "subscribe($path, $callbackPath)"
+def subscribe(hostAddress) {
+    log.debug "Executing 'subscribe()'"
     def address = getCallBackAddress()
-    def ip = getHostAddress()
+    new physicalgraph.device.HubAction("""SUBSCRIBE /upnp/event/basicevent1 HTTP/1.1
+HOST: ${hostAddress}
+CALLBACK: <http://${address}/>
+NT: upnp:event
+TIMEOUT: Second-4200
 
-    def result = new physicalgraph.device.HubAction(
-        method: "SUBSCRIBE",
-        path: path,
-        headers: [
-            HOST: ip,
-            CALLBACK: "<http://${address}/notify$callbackPath>",
-            NT: "upnp:event",
-            TIMEOUT: "Second-28800"
-        ]
-    )
-    log.trace "SUBSCRIBE $path"
-    return result
+
+""", physicalgraph.device.Protocol.LAN)
+}
+
+def subscribe() {
+	subscribe(getHostAddress())
 }
 
 // gets the address of the hub

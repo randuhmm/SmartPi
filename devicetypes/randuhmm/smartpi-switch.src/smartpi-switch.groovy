@@ -40,17 +40,12 @@ metadata {
 
 // parse events into attributes
 def parse(String rawEvent) {
-    log.debug "Parsing '${rawEvent}'"
     def parsedEvent = parseLanMessage(rawEvent)
-    //log.debug "parsedEvent: ${parsedEvent}"
+    log.debug "parsedEvent: ${parsedEvent}"
     
-    def result = []
-    if (parsedEvent.json) {
- 		if(parsedEvent.json.switch) {
-        	result << createEvent(name: "switch", value: parsedEvent.json.switch)
-        }
+    if(parsedEvent?.json?.switch) {
+        sendEvent(name: "switch", value: parsedEvent.json.switch)
     }
-    result
 }
 
 // handle hub response
@@ -76,7 +71,8 @@ def on() {
         method: "POST",
         path: "/on",
         headers: [
-            HOST: getHostAddress()
+            HOST: getHostAddress(),
+            "Content-Type": "application/json"
         ],
         query: [param1: "value1", param2: "value2"]
     )
@@ -107,7 +103,8 @@ def off() {
         method: "POST",
         path: "/off",
         headers: [
-            HOST: getHostAddress()
+            HOST: getHostAddress(),
+            "Content-Type": "application/json"
         ],
         query: [param1: "value1", param2: "value2"]
     )
